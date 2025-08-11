@@ -12,6 +12,7 @@ import { ScalprumProvider } from '@scalprum/react-core';
 
 import { DynamicPluginConfig } from '../../utils/dynamicUI/extractDynamicConfig';
 import overrideBaseUrlConfigs from '../../utils/dynamicUI/overrideBaseUrlConfigs';
+import { TranslationConfig } from '../../types/types';
 import { DynamicRoot, StaticPlugins } from './DynamicRoot';
 import Loader from './Loader';
 
@@ -36,6 +37,7 @@ const ScalprumRoot = ({
       dynamicPlugins: DynamicPluginConfig;
       baseUrl: string;
       scalprumConfig?: AppsConfig;
+      translationConfig? : TranslationConfig;
     }> => {
       const appConfig = overrideBaseUrlConfigs(await defaultConfigLoader());
       const reader = ConfigReader.fromConfigs([
@@ -44,6 +46,7 @@ const ScalprumRoot = ({
       ]);
       const baseUrl = reader.getString('backend.baseUrl');
       const dynamicPlugins = reader.get<DynamicPluginConfig>('dynamicPlugins');
+      const translationConfig = reader.get<TranslationConfig>('i18n');
       try {
         const scalprumConfig: AppsConfig = await fetch(
           `${baseUrl}/api/scalprum/plugins`,
@@ -52,6 +55,7 @@ const ScalprumRoot = ({
           dynamicPlugins,
           baseUrl,
           scalprumConfig,
+          translationConfig
         };
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -69,7 +73,7 @@ const ScalprumRoot = ({
   if (loading && !value) {
     return <Loader />;
   }
-  const { dynamicPlugins, baseUrl, scalprumConfig } = value || {};
+  const { dynamicPlugins, baseUrl, scalprumConfig, translationConfig } = value || {};
   const scalprumApiHolder = {
     dynamicRootConfig: {
       dynamicRoutes: [],
@@ -105,6 +109,7 @@ const ScalprumRoot = ({
         dynamicPlugins={dynamicPlugins ?? {}}
         staticPluginStore={plugins}
         scalprumConfig={scalprumConfig ?? {}}
+        translationConfig={translationConfig ?? {} as any}
       />
     </ScalprumProvider>
   );
