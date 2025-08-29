@@ -240,7 +240,8 @@ export interface Config {
         }[];
         translationResources?: {
           module?: string;
-          importName?: string;
+          importName: string;
+          ref: string;
         }[];
       };
     };

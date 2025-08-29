@@ -16,7 +16,10 @@ import {
   IdentityApi,
   identityApiRef,
 } from '@backstage/core-plugin-api';
-import { TranslationResource } from '@backstage/core-plugin-api/alpha';
+import {
+  TranslationRef,
+  TranslationResource,
+} from '@backstage/core-plugin-api/alpha';
 
 import { useThemes } from '@red-hat-developer-hub/backstage-plugin-theme';
 import DynamicRootContext, {
@@ -34,8 +37,12 @@ import { AppsConfig } from '@scalprum/core';
 import { useScalprum } from '@scalprum/react-core';
 
 import { catalogImportTranslations } from '../../translations/catalog-import/catalog-import';
+import { rhdhJSONTranslations } from '../../translations/rhdhJSONTranslations';
 import { scaffolderTranslations } from '../../translations/scaffolder/scaffolder';
-import { TranslationConfig } from '../../types/types';
+import {
+  InternalTranslationResource,
+  TranslationConfig,
+} from '../../types/types';
 import bindAppRoutes from '../../utils/dynamicUI/bindAppRoutes';
 import extractDynamicConfig, {
   configIfToCallable,
@@ -43,6 +50,7 @@ import extractDynamicConfig, {
   DynamicRoute,
 } from '../../utils/dynamicUI/extractDynamicConfig';
 import initializeRemotePlugins from '../../utils/dynamicUI/initializeRemotePlugins';
+import { translationResourceGenerator } from '../../utils/translationResourceGenerator';
 import { catalogTranslations } from '../catalog/translations/catalog';
 import { MenuIcon } from '../Root/MenuIcon';
 import CommonIcons from './CommonIcons';
@@ -536,15 +544,38 @@ export const DynamicRoot = ({
 
     const dynamicTranslationResources = translationResources?.reduce<
       TranslationResource[]
-    >((acc, { scope, module, importName }) => {
-      const resource = allPlugins[scope]?.[module]?.[importName];
-      if (resource && (resource as TranslationResource<string>).id) {
-        acc.push(resource as TranslationResource<string>);
-      } else {
+    >((acc, { scope, module, importName, ref }) => {
+      const plugin = allPlugins[scope]?.[module];
+      const resource = plugin?.[importName] as InternalTranslationResource<any>;
+      const resourceRef = plugin?.[ref] as any as TranslationRef<string, any>;
+      if (!resource?.id) {
         // eslint-disable-next-line no-console
         console.warn(
           `Plugin ${scope} is not configured properly: ${module}.${importName} not found, ignoring translation resource: ${importName}`,
         );
+        return acc;
+      }
+      acc.push(resource);
+      const jsonTranslationResources = rhdhJSONTranslations[resource.id];
+      const hasJsonOverrides =
+        Object.keys(jsonTranslationResources ?? {}).length > 0;
+
+      if (hasJsonOverrides) {
+        if (!resourceRef) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `Plugin translation ref for ${scope} is not configured, ignoring JSON translation resource`,
+          );
+          return acc;
+        }
+
+        const jsonResource = translationResourceGenerator(
+          resourceRef,
+          resource,
+          jsonTranslationResources,
+        );
+
+        acc.push(jsonResource as TranslationResource<string>);
       }
       return acc;
     }, []);
@@ -601,7 +632,7 @@ export const DynamicRoot = ({
     dynamicRootConfig.scaffolderFieldExtensions =
       scaffolderFieldExtensionComponents;
     dynamicRootConfig.techdocsAddons = techdocsAddonComponents;
-
+    dynamicRootConfig.translationResources = dynamicTranslationResources;
     // make the dynamic UI configuration available to DynamicRootContext consumers
     setComponentRegistry({
       AppProvider: app.current.getProvider(),

@@ -145,6 +145,7 @@ type TranslationResource = {
   scope: string;
   module: string;
   importName: string;
+  ref: string;
 };
 
 type ProviderSetting = {
@@ -416,6 +417,7 @@ function extractDynamicConfig(
         ...resource,
         module: resource.module ?? 'PluginRoot',
         importName: resource.importName ?? 'default',
+        ref: resource.ref ?? null,
         scope,
       })),
     );
